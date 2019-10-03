@@ -52,9 +52,7 @@ const EGLint egl_surface_attribs[] = {
     EGL_NONE,
 };
 
-void
-setup_egl(
-        EGLint api,
+void setup_egl(
         EGLNativeWindowType native_window,
         EGLDisplay* out_display,
         EGLConfig* out_config,
@@ -64,9 +62,9 @@ setup_egl(
     EGLint ignore;
     EGLBoolean ok;
 
-    ok = eglBindAPI(api);
+    ok = eglBindAPI(EGL_OPENGL_ES_API);
     if (!ok)
-        error_fatal("eglBindAPI(0x%x) failed", api);
+        error_fatal("eglBindAPI failed");
 
     EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
     if (display == EGL_NO_DISPLAY)
