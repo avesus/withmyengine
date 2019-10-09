@@ -65,11 +65,22 @@ void add_event_listener (int ref_object, const char* event,
 	fn_callback();
 }
 
+int init_gpu () {
+	/*int Object = bind_ref_by_name(window, "Object");
+	int keys = bind_ref_by_name(Object, "keys");
+	int args2 = create_array();
+	assign_by_int_key_property(args2, 0, window);
+	int all_top_level_DOM_object_names = call_fn(keys, Object, args2);*/
+
+	return 0;
+}
+
 extern "C" void assign_by_int_key_property_fn (int object_ref_id, int numeric_key,
 	type_method_evt value_ref);
 
 __attribute__((visibility("default"))) extern "C"
 int init () {
+	return init_gpu();
 	
 	// void* p_handler = (void*)&o_window_DOM_events_handler;
 	

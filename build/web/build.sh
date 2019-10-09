@@ -10,7 +10,7 @@ DIR_WAS=$PWD
 cd $DIR
 export CC=/usr/bin/clang
 export CXX=/usr/bin/clang++
-rm CMakeCache.txt
+# rm CMakeCache.txt
 cmake $DIR/../../platform/web/ || exit $?
 make || exit $?
 cd $DIR_WAS

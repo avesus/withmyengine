@@ -1,7 +1,13 @@
-<html lang="en">
+<!doctype html>
+<html hidden lang="en">
 <head>
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta charset="utf-8">
 <link rel="icon" href="data:,">
+<meta name="theme-color" content="transparent">
+
+<meta name="viewport" content="initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="format-detection" content="telephone=no">
+
 <script>
 const started = performance.now();
 
@@ -124,4 +130,17 @@ init();
 
 </script>
 </head>
+<body hidden>
+<canvas id="0" width="16px" height="16px" draggable="true"></canvas>
+<script>
+g_gl = document.getElementById('0').getContext('webgl', {
+  depth: true,
+  stencil: true,
+  alpha: true,
+  antialias: false,
+  preserveDrawingBuffer: false,
+  failIfMajorPerformanceCaveat: false,
+  powerPreference: 'high-performance' });
+</script>
+</body>
 </html>
