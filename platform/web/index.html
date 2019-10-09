@@ -1,0 +1,127 @@
+<html lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="icon" href="data:,">
+<script>
+const started = performance.now();
+
+let ref_map = [
+	undefined,
+	window,
+];
+
+let wasm_memory = null;
+
+const js_str_from_c_str = (c_str) => {
+	let string = '';
+	let val = wasm_memory[c_str];
+	while (val) {
+		string += String.fromCharCode(val);
+		val = wasm_memory[++c_str];
+	}
+	return string;
+};
+
+const init = async () => {
+	const response = await fetch('withmyengine');
+	const wasmData = await response.arrayBuffer();
+	const compiledModule = await WebAssembly.compile(wasmData);
+
+	console.log('REQUIRED IMPORTS:', WebAssembly.Module.imports(compiledModule));
+	console.log('CUSTOM SECTIONS:', WebAssembly.Module.customSections(compiledModule, 'name'));
+	console.log('CUSTOM SECTIONS:', WebAssembly.Module.customSections(compiledModule, '.debug_line'));
+	console.log('PROVIDED EXPORTS:', WebAssembly.Module.exports(compiledModule));
+
+	// Link the compiled WASM module so JS<->C++ interop becomes possible:
+	const wasmInstance = await WebAssembly.instantiate(compiledModule, { env: {
+		// memoryBase: 0,
+		// tableBase: 0,
+		// Number of elements in this table equal to the number of exported functions
+		//__indirect_function_table: new window.WebAssembly.Table({ element: 'anyfunc', initial: 4, maximum: 4 }),
+		//table: new window.WebAssembly.Table({ element: 'anyfunc', initial: 256, maximum: 65535 }),
+		//printNumber: function (num) { window.g_wasmEngine.callbacks.printNumber(num); },
+		//callJsFnRef: function (idx) { console.log('callJsFnRef', idx); },
+		//consoleLogA: function (psMsg, nMsgLen) { },
+		//consoleLogW: function (pwMsg, nMsgLen) { },
+		//devReload: function () {},
+		//doubleVal: function (number) { console.log(number); },
+		//wsSend: function (pData, nDataLen) { },
+		browser_fn: function () { console.log('called back'); },
+
+		// A JS reference can be:
+		// 1. Tested for existance
+		// 2. Downconverted to an integral type and serialized
+		// 3. Called as a function
+		bind_ref_by_name (parent, name) {
+			const id = ref_map.length;
+			ref_map.push(ref_map[parent][js_str_from_c_str(name)]);
+			return id;
+		},
+
+		create_array () {
+			const id = ref_map.length;
+			ref_map.push([]);
+			return id;
+		},
+
+		create_object () {
+			const id = ref_map.length;
+			ref_map.push({});
+			return id;
+		},
+
+		create_string (cvalue_str) {
+			const id = ref_map.length;
+			ref_map.push(js_str_from_c_str(cvalue_str));
+			return id;
+		},
+
+		assign_by_string_key_property (object_or_array, key_str, value_ref) {
+			let target = ref_map[object_or_array];
+			target[js_str_from_c_str(key_str)] = ref_map[value_ref];
+		},
+
+		assign_by_int_key_property (object_or_array, key_int, value_ref) {
+			let target = ref_map[object_or_array];
+			target[key_int] = ref_map[value_ref];
+		},
+
+		assign_by_int_key_property_fn (object_or_array, key_int, fn_ptr) {
+			let target = ref_map[object_or_array];
+			target[key_int] = fn_ptr;
+		},
+
+		call_fn (fn_ref, this_ref, arguments_array_ref) {
+			let func = ref_map[fn_ref];
+			const res_ref = func.apply(ref_map[this_ref], ref_map[arguments_array_ref]);
+			if (res_ref) {
+				res_id = ref_map.length;
+				ref_map.push(res_ref);
+				return res_id;
+			} else {
+				return 0;
+			}
+		}
+	}});
+
+	wasm_memory = new Uint8Array(wasmInstance.exports.memory.buffer, 0, wasmInstance.exports.memory.byteLength);
+
+	console.log('LINKED EXPORTS:', wasmInstance.exports);
+	console.log(performance.now(), 'WASM Instance:', wasmInstance, compiledModule);
+
+	// window.g_wasmEngine.callbacks.printNumber = num => {
+	//	console.log(window.performance.now(), 'PRINT NUM:', num);
+	//};
+	// wasmInstance.exports.memory.grow(10);
+	const result = wasmInstance.exports.init();
+	//const result2 = wasmInstance.exports.call_me();
+	//console.log(result, result2);
+	// const result = wasmInstance.exports.hello2(5, window.g_wasmEngine.callbacks.printNumber);
+	console.log(`WASM CALL TOOK ${ performance.now() - started }`);
+};
+
+init();
+
+</script>
+</head>
+</html>

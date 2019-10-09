@@ -7,8 +7,7 @@
 
 using namespace std;
 
-void
-error_fatal(const char* format, ...) {
+void error_fatal(const char* format, ...) {
     printf("error: ");
 
     va_list va;
@@ -20,111 +19,98 @@ error_fatal(const char* format, ...) {
     exit(1);
 }
 
+# define ERROR "ERROR"
 
-
-const EGLint egl_config_attribs[] = {
-    EGL_COLOR_BUFFER_TYPE,     EGL_RGB_BUFFER,
-    EGL_BUFFER_SIZE,           32,
-    EGL_RED_SIZE,              8,
-    EGL_GREEN_SIZE,            8,
-    EGL_BLUE_SIZE,             8,
-    EGL_ALPHA_SIZE,            8,
-
-    EGL_DEPTH_SIZE,            24,
-    EGL_STENCIL_SIZE,          8,
-
-    EGL_SAMPLE_BUFFERS,        0,
-    EGL_SAMPLES,               0,
-
-    EGL_SURFACE_TYPE,          EGL_WINDOW_BIT,
-    EGL_RENDERABLE_TYPE,       EGL_OPENGL_ES2_BIT,
-
-    EGL_NONE,
-};
-
-const EGLint egl_context_attribs[] = {
-    EGL_CONTEXT_CLIENT_VERSION, 2,
-    EGL_NONE,
-};
-
-const EGLint egl_surface_attribs[] = {
-    EGL_RENDER_BUFFER, EGL_BACK_BUFFER,
-    EGL_NONE,
-};
+# define OK(expr) (!(expr) ? (throw "ERROR##expr"), false : true)
 
 void setup_egl(
-        EGLNativeWindowType native_window,
-        EGLDisplay* out_display,
-        EGLConfig* out_config,
-        EGLContext* out_context,
-        EGLSurface* out_window_surface) {
+	EGLNativeWindowType native_window,
+	EGLDisplay* out_display,
+	EGLConfig* out_config,
+	EGLContext* out_context,
+	EGLSurface* out_window_surface) {
 
-    EGLint ignore;
-    EGLBoolean ok;
+	OK(eglBindAPI(EGL_OPENGL_ES_API));
 
-    ok = eglBindAPI(EGL_OPENGL_ES_API);
-    if (!ok)
-        error_fatal("eglBindAPI failed");
+	EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+	OK(display != EGL_NO_DISPLAY);
 
-    EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-    if (display == EGL_NO_DISPLAY)
-        error_fatal("eglGetDisplay() failed");
+	EGLint ignore = 0;
+	OK(eglInitialize(display, &ignore, &ignore));
 
-    ok = eglInitialize(display, &ignore, &ignore);
-    if (!ok)
-        error_fatal("eglInitialize() failed");
+	EGLint configs_size = 256;
+	EGLConfig* configs = new EGLConfig[configs_size];
+	EGLint num_configs = 0;
 
-    EGLint configs_size = 256;
-    EGLConfig* configs = new EGLConfig[configs_size];
-    EGLint num_configs;
-    ok = eglChooseConfig(
-        display,
-        egl_config_attribs,
-        configs,
-        configs_size, // num requested configs
-        &num_configs); // num returned configs
-    if (!ok)
-        error_fatal("eglChooseConfig() failed");
-    if (num_configs == 0)
-        error_fatal("failed to find suitable EGLConfig");
-    EGLConfig config = configs[0];
-    delete [] configs;
+	const EGLint egl_config_attribs[] = {
+		EGL_COLOR_BUFFER_TYPE,     EGL_RGB_BUFFER,
+		EGL_BUFFER_SIZE,           32,
+		EGL_RED_SIZE,              8,
+		EGL_GREEN_SIZE,            8,
+		EGL_BLUE_SIZE,             8,
+		EGL_ALPHA_SIZE,            8,
 
-    EGLContext context = eglCreateContext(
-        display,
-        config,
-        EGL_NO_CONTEXT,
-        egl_context_attribs);
-    if (!context)
-        error_fatal("eglCreateContext() failed");
+		EGL_DEPTH_SIZE,            24,
+		EGL_STENCIL_SIZE,          8,
 
-    EGLSurface surface = eglCreateWindowSurface(
-        display,
-        config,
-        native_window,
-        egl_surface_attribs);
-    if (!surface)
-        error_fatal("eglCreateWindowSurface() failed");
+		EGL_SAMPLE_BUFFERS,        0,
+		EGL_SAMPLES,               0,
 
-    ok = eglMakeCurrent(display, surface, surface, context);
-    if (!ok)
-    error_fatal("eglMakeCurrent() failed");
+		EGL_SURFACE_TYPE,          EGL_WINDOW_BIT,
+		EGL_RENDERABLE_TYPE,       EGL_OPENGL_ES2_BIT,
 
-    // Check if surface is double buffered.
-    EGLint render_buffer;
-    ok = eglQueryContext(
-        display,
-        context,
-        EGL_RENDER_BUFFER,
-        &render_buffer);
-    if (!ok)
-        error_fatal("eglQueyContext(EGL_RENDER_BUFFER) failed");
-    if (render_buffer == EGL_SINGLE_BUFFER)
-        printf("warn: EGL surface is single buffered\n");
+		EGL_NONE,
+	};
+	OK(eglChooseConfig(
+		display,
+		egl_config_attribs,
+		configs,
+		configs_size, // num requested configs
+		&num_configs)); // num returned configs
+	OK(num_configs);
+	EGLConfig config = configs[0];
+	delete [] configs;
 
-    *out_display = display;
-    *out_config = config;
-    *out_context = context;
-    *out_window_surface = surface;
+	const EGLint egl_context_attribs[] = {
+		EGL_CONTEXT_CLIENT_VERSION, 2,
+		EGL_NONE,
+	};
+	EGLContext context = eglCreateContext(
+		display,
+		config,
+		EGL_NO_CONTEXT,
+		egl_context_attribs);
+	OK(context);
+
+	const EGLint egl_surface_attribs[] = {
+		EGL_RENDER_BUFFER,
+		EGL_BACK_BUFFER,
+		EGL_NONE,
+	};
+	EGLSurface surface = eglCreateWindowSurface(
+		display,
+		config,
+		native_window,
+		egl_surface_attribs);
+	OK(surface);
+
+	OK(eglMakeCurrent(display, surface, surface, context));
+
+	// Check if surface is double buffered.
+	EGLint render_buffer;
+	OK(eglQueryContext(
+		display,
+		context,
+		EGL_RENDER_BUFFER,
+		&render_buffer));
+
+	if (render_buffer == EGL_SINGLE_BUFFER) {
+		printf("warn: EGL surface is single buffered\n");
+	}
+
+	*out_display = display;
+	*out_config = config;
+	*out_context = context;
+	*out_window_surface = surface;
 }
 
